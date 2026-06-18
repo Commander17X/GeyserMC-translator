@@ -39,6 +39,26 @@ tasks.named<Jar>("jar") {
 tasks.withType<com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar> {
     archiveBaseName.set("Geyser-Translator")
 
+    doLast {
+        val libsDir = archiveFile.get().asFile.parentFile
+        listOf("INSTALL.txt", "config.yml.example", "run.bat", "run.sh").forEach { name ->
+            val src = projectDir.resolve(name)
+            if (src.exists()) {
+                src.copyTo(libsDir.resolve(name), overwrite = true)
+            }
+        }
+    }
+
+    manifest {
+        attributes(
+            mapOf(
+                "Multi-Release" to true,
+                "Implementation-Title" to "Geyser Translator (standalone application)",
+                "Implementation-Note" to "Do NOT install in Paper/Velocity plugins. Run: java -jar Geyser-Translator.jar --nogui"
+            )
+        )
+    }
+
     transform(Log4j2PluginsCacheFileTransformer())
     // https://gradleup.com/shadow/configuration/merging/#handling-duplicates-strategy
     filesMatching("META-INF/org/apache/logging/log4j/core/config/plugins/Log4j2Plugins.dat") {

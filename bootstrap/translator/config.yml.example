@@ -1,0 +1,29 @@
+# Copy to config.yml and edit. Run: java -jar Geyser-Translator.jar --nogui
+# DO NOT put Geyser-Translator.jar in Paper or Velocity plugins/
+
+bedrock:
+  address: 0.0.0.0
+  port: 19132
+
+remote:
+  address: 127.0.0.1
+  port: 25577
+  auth-type: floodgate
+
+advanced:
+  movement-profile: BALANCED
+  java:
+    useHaproxyProtocol: false
+
+translator:
+  health-port: 8080
+  node-id: translator-1
+  chunk-cache-size: 512
+  chunk-translation-threads: 0
+  async-chunk-translation: true
+  supported-bedrock-protocols: []
+  skin-cdn-base-url: ""
+  rak-send-cookie: true
+  rak-packet-limit: -1
+  rak-global-packet-limit: -1
+  max-connections-per-address: -1

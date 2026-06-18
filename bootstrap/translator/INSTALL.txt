@@ -1,0 +1,40 @@
+================================================================================
+  Geyser-Translator.jar is NOT a plugin
+================================================================================
+
+Do NOT put this file in:
+  - Paper/Spigot plugins/
+  - Velocity plugins/
+  - BungeeCord plugins/
+
+Those servers expect plugin.yml or velocity-plugin.json. This JAR is a
+standalone application (like Geyser-Standalone.jar).
+
+CORRECT SETUP
+-------------
+
+  Bedrock client  -->  Geyser-Translator (this JAR)  -->  Velocity  -->  Paper
+
+1. Remove Geyser-Translator.jar from any plugins/ folder.
+
+2. Create a folder, e.g. C:\geyser-translator\
+   Copy into it:
+     - Geyser-Translator.jar
+     - config.yml (copy from config.yml.example and edit)
+
+3. Install on Velocity ONLY:
+     - floodgate-velocity.jar
+     - (optional) geyser-velocity.jar if you want Java-side Geyser too — usually NOT
+       needed when using translator nodes
+
+4. Start the translator (JDK 25+):
+
+     java -jar Geyser-Translator.jar --nogui
+
+   Or on Windows: double-click run.bat (after editing config.yml)
+
+5. Point Bedrock clients at the translator's bedrock.port (default 19132).
+
+See README.md for Floodgate, HAProxy, and translator: config options.
+
+================================================================================

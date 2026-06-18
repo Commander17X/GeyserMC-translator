@@ -1,6 +1,21 @@
 # GeyserMC Translator Node
 
+> **Not a plugin.** `Geyser-Translator.jar` must **not** go in Paper `plugins/` or Velocity `plugins/`.
+> It has no `plugin.yml` / `velocity-plugin.json`. Run it as a **standalone process**:
+>
+> ```bash
+> java -jar Geyser-Translator.jar --nogui
+> ```
+>
+> See [INSTALL.txt](INSTALL.txt) and [config.yml.example](config.yml.example). Use `run.bat` / `run.sh` after copying the JAR and config into one folder.
+
 This module provides a dedicated GeyserMC translator node, designed to offload Bedrock translation from your Velocity/Paper server. It acts as an intermediary, translating Bedrock client connections to the Java protocol before forwarding them to your Java proxy (e.g., Velocity).
+
+```
+Bedrock  →  Geyser-Translator (standalone)  →  Velocity (+ Floodgate)  →  Paper
+```
+
+**On Velocity:** install **Floodgate** only (not this JAR). **On Paper:** no Geyser-Translator — Bedrock players arrive via Floodgate through Velocity.
 
 ## Setup with Floodgate and HAProxy
 
