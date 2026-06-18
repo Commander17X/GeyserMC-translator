@@ -440,7 +440,7 @@ public class Entity implements GeyserEntity {
                 propertyManager.applyIntProperties(entityDataPacket.getProperties().getIntProperties());
                 propertyManager.applyFloatProperties(entityDataPacket.getProperties().getFloatProperties());
             }
-            session.sendUpstreamPacket(entityDataPacket);
+            session.queueImmediatelyUpstreamPacket(entityDataPacket);
         }
     }
 

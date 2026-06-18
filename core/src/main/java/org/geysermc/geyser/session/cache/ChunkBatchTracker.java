@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2024 GeyserMC. http://geysermc.org
+ * Copyright (c) 2019-2022 GeyserMC. http://geysermc.org
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,20 +23,37 @@
  * @link https://github.com/GeyserMC/Geyser
  */
 
-package org.geysermc.geyser.translator.protocol.bedrock.entity.player.input;
+package org.geysermc.geyser.session.cache;
 
-import org.cloudburstmc.protocol.bedrock.packet.PlayerAuthInputPacket;
-import org.geysermc.geyser.session.GeyserSession;
+import lombok.Getter;
 
 /**
- * Holds processing input coming in from the {@link PlayerAuthInputPacket} packet.
+ * Tracks an in-flight Java chunk batch for a session.
  */
-final class BedrockMovePlayer {
+public final class ChunkBatchTracker {
 
-    private BedrockMovePlayer() {
-    }
+  @Getter
+  private volatile boolean inBatch;
+  @Getter
+  private volatile int pendingChunks;
 
-    static void translate(GeyserSession session, PlayerAuthInputPacket packet) {
-        session.getMovementNormalizer().process(packet);
+  public void beginBatch() {
+    inBatch = true;
+    pendingChunks = 0;
+  }
+
+  public void chunkReceived() {
+    if (inBatch) {
+      pendingChunks++;
     }
+  }
+
+  public void endBatch() {
+    inBatch = false;
+    pendingChunks = 0;
+  }
+
+  public boolean isInBatch() {
+    return inBatch;
+  }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2024 GeyserMC. http://geysermc.org
+ * Copyright (c) 2024 GeyserMC. http://geysermc.org
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,20 +23,31 @@
  * @link https://github.com/GeyserMC/Geyser
  */
 
-package org.geysermc.geyser.translator.protocol.bedrock.entity.player.input;
+package org.geysermc.geyser.platform.translator;
 
-import org.cloudburstmc.protocol.bedrock.packet.PlayerAuthInputPacket;
-import org.geysermc.geyser.session.GeyserSession;
+import org.geysermc.geyser.GeyserImpl;
+import org.geysermc.geyser.api.util.TriState;
+import org.geysermc.geyser.command.GeyserCommand;
+import org.geysermc.geyser.command.GeyserCommandSource;
+import org.incendo.cloud.context.CommandContext;
 
-/**
- * Holds processing input coming in from the {@link PlayerAuthInputPacket} packet.
- */
-final class BedrockMovePlayer {
+public class DrainCommand extends GeyserCommand {
 
-    private BedrockMovePlayer() {
+    private final GeyserImpl geyser;
+
+    public DrainCommand(GeyserImpl geyser) {
+        super("drain", "Stop accepting new Bedrock connections while existing sessions finish", "", TriState.NOT_SET);
+        this.geyser = geyser;
     }
 
-    static void translate(GeyserSession session, PlayerAuthInputPacket packet) {
-        session.getMovementNormalizer().process(packet);
+    @Override
+    public void execute(CommandContext<GeyserCommandSource> context) {
+        boolean draining = !geyser.getSessionManager().isDraining();
+        geyser.getSessionManager().setDraining(draining);
+        context.sender().sendMessage(
+            draining
+                ? "Translator drain enabled: new Bedrock connections will be rejected."
+                : "Translator drain disabled: accepting new connections."
+        );
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2024 GeyserMC. http://geysermc.org
+ * Copyright (c) 2024 GeyserMC. http://geysermc.org
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,20 +23,32 @@
  * @link https://github.com/GeyserMC/Geyser
  */
 
-package org.geysermc.geyser.translator.protocol.bedrock.entity.player.input;
+package org.geysermc.geyser.movement;
 
-import org.cloudburstmc.protocol.bedrock.packet.PlayerAuthInputPacket;
-import org.geysermc.geyser.session.GeyserSession;
+import org.geysermc.geyser.util.MathUtils;
 
 /**
- * Holds processing input coming in from the {@link PlayerAuthInputPacket} packet.
+ * Converts Bedrock's wrapped yaw (-180..180) into Java's unwrapped yaw.
  */
-final class BedrockMovePlayer {
+public final class YawUnwrapper {
 
-    private BedrockMovePlayer() {
+    private YawUnwrapper() {
     }
 
-    static void translate(GeyserSession session, PlayerAuthInputPacket packet) {
-        session.getMovementNormalizer().process(packet);
+    /**
+     * @param bedrockYaw wrapped yaw from the Bedrock client
+     * @param previousJavaYaw last yaw sent to the Java server
+     * @return unwrapped yaw suitable for Java Edition (never ±180 jumps)
+     */
+    public static float unwrap(float bedrockYaw, float previousJavaYaw) {
+        return previousJavaYaw + MathUtils.wrapDegrees(bedrockYaw - previousJavaYaw);
+    }
+
+    public static boolean isValidRotation(float yaw, float pitch, float headYaw) {
+        return !isInvalidNumber(yaw) && !isInvalidNumber(pitch) && !isInvalidNumber(headYaw);
+    }
+
+    private static boolean isInvalidNumber(float val) {
+        return Float.isNaN(val) || Float.isInfinite(val);
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2024 GeyserMC. http://geysermc.org
+ * Copyright (c) 2024 GeyserMC. http://geysermc.org
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,20 +23,14 @@
  * @link https://github.com/GeyserMC/Geyser
  */
 
-package org.geysermc.geyser.translator.protocol.bedrock.entity.player.input;
-
-import org.cloudburstmc.protocol.bedrock.packet.PlayerAuthInputPacket;
-import org.geysermc.geyser.session.GeyserSession;
+package org.geysermc.geyser.session;
 
 /**
- * Holds processing input coming in from the {@link PlayerAuthInputPacket} packet.
+ * Records which translator node and Bedrock protocol version last served a player.
  */
-final class BedrockMovePlayer {
+public record SessionAffinity(String nodeId, int bedrockProtocol) {
 
-    private BedrockMovePlayer() {
-    }
-
-    static void translate(GeyserSession session, PlayerAuthInputPacket packet) {
-        session.getMovementNormalizer().process(packet);
+    public boolean isValid() {
+        return nodeId != null && !nodeId.isBlank() && bedrockProtocol > 0;
     }
 }

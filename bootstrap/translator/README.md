@@ -95,4 +95,87 @@ ip-forwarding = true
 # (usually done automatically by Floodgate plugin itself)
 ```
 
+## Operations (Phase 5)
+
+### Configuration
+
+Add a `translator` section to `config.yml`:
+
+```yaml
+translator:
+  health-port: 8080          # HTTP /health and /metrics; 0 disables
+  node-id: translator-1      # Unique node ID for session affinity metadata
+  chunk-cache-size: 512      # Cross-session LRU cache for translated chunks
+  chunk-translation-threads: 0  # 0 = available processors
+  async-chunk-translation: true
+  supported-bedrock-protocols: []   # e.g. [924, 944, 975] — empty = all
+  skin-cdn-base-url: ""             # e.g. https://cdn.example.com/skins
+  rak-send-cookie: true
+  rak-packet-limit: -1              # -1 = Geyser default (500)
+  rak-global-packet-limit: -1
+  max-connections-per-address: -1
+```
+
+### Health and metrics
+
+When `health-port` is set (default `8080`):
+
+- `GET /health` — JSON with status, sessions, node_id, supported_protocols
+- `GET /routing` — JSON for load-balancer routing (node_id, supported_protocols, supported_versions)
+- `GET /metrics` — Prometheus-style counters:
+  - `geyser_translator_active_sessions`
+  - `geyser_translator_chunks_translated_total`
+  - `geyser_translator_chunk_cache_hits_total`
+  - `geyser_translator_chunk_cache_misses_total`
+
+Use these endpoints behind HAProxy HTTP health checks or Prometheus scraping.
+
+### Graceful drain
+
+Run `geyser drain` in the translator console to toggle drain mode. While draining:
+
+- New Bedrock connections are rejected
+- Existing sessions continue until they disconnect
+- `/health` reports `"status":"draining"`
+
+### Session affinity
+
+Each logged-in Java player UUID is mapped to this node's `node-id` and Bedrock protocol version in `SessionManager`. External load balancers can use `/routing` and session affinity for sticky routing on reconnect.
+
+## Production hardening (Phase 6)
+
+### Multi-version routing
+
+Pin each translator node to specific Bedrock protocol versions via `supported-bedrock-protocols`. Clients on unsupported versions are rejected with a message listing accepted protocols. HAProxy can use HTTP checks against `/routing` to route by version:
+
+```
+backend geyser_translators_v26
+  option httpchk GET /routing
+  http-check expect rstring "supported_protocols":\[.*1001
+  server t1 192.168.1.101:8080 check
+  server t2 192.168.1.102:8080 check
+```
+
+### Skin CDN
+
+When `skin-cdn-base-url` is set, skins are fetched from `{base}/{hash}.png` (hash = UUID.nameUUIDFromBytes(textureUrl)) before hitting Mojang.
+
+### RakNet / DDoS tuning
+
+Translator-specific RakNet overrides: `rak-send-cookie`, `rak-packet-limit`, `rak-global-packet-limit`, `max-connections-per-address`. Values of `-1` keep Geyser defaults.
+
+### JMH benchmarks
+
+Run microbenchmarks for movement normalization and version routing:
+
+```powershell
+./gradlew :benchmark:jmh
+```
+
+Results are written to `benchmark/build/results/jmh/`.
+
+### Async chunk pipeline
+
+Chunk encoding runs on a `chunk-translate-N` worker pool. Translated Bedrock payloads are cached cross-session by `(protocolVersion, dimension, chunkX, chunkZ, chunkData hash)` and sent on the session tick event loop.
+
 This setup ensures that Bedrock clients connect to your Translator nodes, which then translate the packets and forward them via TCP with PROXY protocol to Velocity. Velocity then forwards these connections (including Floodgate authentication data and real client IPs) to your Paper backend server. Adjust IP addresses and ports according to your network topology.

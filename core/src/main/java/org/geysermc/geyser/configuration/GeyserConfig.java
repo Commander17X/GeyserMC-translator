@@ -35,6 +35,7 @@ import org.geysermc.geyser.network.GameProtocol;
 import org.geysermc.geyser.text.AsteriskSerializer;
 import org.geysermc.geyser.text.GeyserLocale;
 import org.geysermc.geyser.util.CooldownUtils;
+import org.geysermc.geyser.movement.AntiCheatProfile;
 import org.spongepowered.configurate.interfaces.meta.Exclude;
 import org.spongepowered.configurate.interfaces.meta.defaults.DefaultBoolean;
 import org.spongepowered.configurate.interfaces.meta.defaults.DefaultNumeric;
@@ -495,5 +496,12 @@ public interface GeyserConfig {
 
         @Comment("Advanced networking options for Geyser's Bedrock listener")
         AdvancedBedrockConfig bedrock();
+
+        @Comment("""
+            Movement normalization profile for Bedrock-to-Java player movement translation.
+            STRICT and BALANCED coalesce position packets to one per server tick; LEGACY forwards every input.""")
+        default AntiCheatProfile movementProfile() {
+            return AntiCheatProfile.BALANCED;
+        }
     }
 }

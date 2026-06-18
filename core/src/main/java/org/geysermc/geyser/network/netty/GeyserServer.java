@@ -74,6 +74,24 @@ import java.util.function.Supplier;
 import static org.cloudburstmc.netty.channel.raknet.RakConstants.DEFAULT_GLOBAL_PACKET_LIMIT;
 import static org.cloudburstmc.netty.channel.raknet.RakConstants.DEFAULT_PACKET_LIMIT;
 
+/**
+ * Netty/RakNet Bedrock listener for Geyser.
+ * <p>
+ * Per-player session work runs on the {@linkplain #getPlayerEventLoopGroup() player EventLoop} assigned at connect time
+ * (see {@link org.geysermc.geyser.network.GeyserServerInitializer}). Bedrock upstream packets queued via
+ * {@link org.geysermc.geyser.session.GeyserSession#queueImmediatelyUpstreamPacket} are flushed once per server tick.
+ * <p>
+ * JVM tuning properties:
+ * <ul>
+ *   <li>{@code Geyser.ListenCount} – SO_REUSEPORT listener threads (default 1)</li>
+ *   <li>{@code Geyser.RakPacketLimit} – per-channel RakNet packet limit</li>
+ *   <li>{@code Geyser.RakGlobalPacketLimit} – global RakNet packet limit</li>
+ *   <li>{@code Geyser.RakSendCookie} – enable RakNet cookies (default true)</li>
+ *   <li>{@code Geyser.MaxConnectionsPerAddress} – RakNet throttle max connections per address</li>
+ *   <li>{@code Geyser.RakRateLimitingDisabled} – disable RakNet rate limiting</li>
+ *   <li>{@code disableNativeEventLoop} – force NIO instead of Epoll/KQueue/IoUring</li>
+ * </ul>
+ */
 public final class GeyserServer {
     private static final boolean PRINT_DEBUG_PINGS = Boolean.parseBoolean(System.getProperty("Geyser.PrintPingsInDebugMode", "true"));
 
@@ -103,6 +121,14 @@ public final class GeyserServer {
     private EventLoopGroup childGroup;
     private final ServerBootstrap bootstrap;
     private EventLoopGroup playerGroup;
+
+    /**
+     * Event loop group used for per-player Bedrock session and tick scheduling.
+     * Each connecting player is assigned {@code next()} from this group in {@link org.geysermc.geyser.network.GeyserServerInitializer}.
+     */
+    public EventLoopGroup getPlayerEventLoopGroup() {
+        return playerGroup;
+    }
 
     private int listenCount;
 
@@ -252,6 +278,12 @@ public final class GeyserServer {
         }
 
         String ip = geyser.config().logPlayerIpAddresses() ? clientAddress.toString() : "<IP address withheld>";
+
+        if (geyser.getSessionManager().isDraining()) {
+            geyser.getLogger().info("Rejecting connection from " + ip + " - translator is draining");
+            connectionAttempts++;
+            return false;
+        }
 
         ConnectionRequestEvent requestEvent = new ConnectionRequestEvent(
             clientAddress,

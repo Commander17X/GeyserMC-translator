@@ -57,6 +57,7 @@ public class JavaSetEntityDataTranslator extends PacketTranslator<ClientboundSet
         }
 
         entity.updateBedrockMetadata();
+        // Metadata is queued and coalesced per entity in GeyserSession.tick() via queueImmediatelyUpstreamPacket.
 
         // Update the interactive tag, if necessary
         Entity mouseoverEntity = session.getMouseoverEntity();

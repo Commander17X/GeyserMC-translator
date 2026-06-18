@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2024 GeyserMC. http://geysermc.org
+ * Copyright (c) 2024 GeyserMC. http://geysermc.org
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,20 +23,27 @@
  * @link https://github.com/GeyserMC/Geyser
  */
 
-package org.geysermc.geyser.translator.protocol.bedrock.entity.player.input;
+package org.geysermc.geyser.movement;
 
-import org.cloudburstmc.protocol.bedrock.packet.PlayerAuthInputPacket;
-import org.geysermc.geyser.session.GeyserSession;
+import org.cloudburstmc.math.vector.Vector3d;
+import org.cloudburstmc.math.vector.Vector3f;
 
 /**
- * Holds processing input coming in from the {@link PlayerAuthInputPacket} packet.
+ * Normalized movement state destined for Java Edition move packets.
  */
-final class BedrockMovePlayer {
-
-    private BedrockMovePlayer() {
-    }
-
-    static void translate(GeyserSession session, PlayerAuthInputPacket packet) {
-        session.getMovementNormalizer().process(packet);
-    }
+public record JavaMovementState(
+    Vector3d javaPosition,
+    Vector3f bedrockPosition,
+    Vector3f delta,
+    float bedrockYaw,
+    float javaYaw,
+    float pitch,
+    float headYaw,
+    boolean onGround,
+    boolean horizontalCollision,
+    boolean positionChanged,
+    boolean rotationChanged,
+    boolean positionUpdateRequired,
+    boolean handleTeleport
+) {
 }

@@ -55,6 +55,7 @@ import org.geysermc.api.util.BedrockPlatform;
 import org.geysermc.geyser.Constants;
 import org.geysermc.geyser.GeyserImpl;
 import org.geysermc.geyser.api.event.bedrock.SessionInitializeEvent;
+import org.geysermc.geyser.api.util.PlatformType;
 import org.geysermc.geyser.api.network.AuthType;
 import org.geysermc.geyser.api.pack.PackCodec;
 import org.geysermc.geyser.api.pack.ResourcePack;
@@ -147,6 +148,12 @@ public class UpstreamPacketHandler extends LoggingPacketHandler {
         }
 
         session.getUpstream().getSession().setCodec(packetCodec);
+
+        if (geyser.platformType() == PlatformType.TRANSLATOR && !geyser.acceptsTranslatorBedrockProtocol(protocolVersion)) {
+            session.disconnect(geyser.getTranslatorProtocolRejectMessage(protocolVersion));
+            return false;
+        }
+
         return true;
     }
 

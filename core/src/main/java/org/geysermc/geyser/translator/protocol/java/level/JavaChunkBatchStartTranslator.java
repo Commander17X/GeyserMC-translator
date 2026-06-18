@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2024 GeyserMC. http://geysermc.org
+ * Copyright (c) 2019-2023 GeyserMC. http://geysermc.org
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,20 +23,18 @@
  * @link https://github.com/GeyserMC/Geyser
  */
 
-package org.geysermc.geyser.translator.protocol.bedrock.entity.player.input;
+package org.geysermc.geyser.translator.protocol.java.level;
 
-import org.cloudburstmc.protocol.bedrock.packet.PlayerAuthInputPacket;
+import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.level.ClientboundChunkBatchStartPacket;
 import org.geysermc.geyser.session.GeyserSession;
+import org.geysermc.geyser.translator.protocol.PacketTranslator;
+import org.geysermc.geyser.translator.protocol.Translator;
 
-/**
- * Holds processing input coming in from the {@link PlayerAuthInputPacket} packet.
- */
-final class BedrockMovePlayer {
+@Translator(packet = ClientboundChunkBatchStartPacket.class)
+public class JavaChunkBatchStartTranslator extends PacketTranslator<ClientboundChunkBatchStartPacket> {
 
-    private BedrockMovePlayer() {
-    }
-
-    static void translate(GeyserSession session, PlayerAuthInputPacket packet) {
-        session.getMovementNormalizer().process(packet);
-    }
+  @Override
+  public void translate(GeyserSession session, ClientboundChunkBatchStartPacket packet) {
+    session.getChunkBatchTracker().beginBatch();
+  }
 }

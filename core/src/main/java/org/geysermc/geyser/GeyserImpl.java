@@ -94,13 +94,17 @@ import org.geysermc.geyser.session.PendingMicrosoftAuthentication;
 import org.geysermc.geyser.session.SessionDisconnectListener;
 import org.geysermc.geyser.session.SessionManager;
 import org.geysermc.geyser.session.cache.RegistryCache;
+import org.geysermc.geyser.session.cache.TranslatedChunkCache;
 import org.geysermc.geyser.skin.FloodgateSkinUploader;
 import org.geysermc.geyser.skin.ProvidedSkins;
 import org.geysermc.geyser.skin.SkinProvider;
 import org.geysermc.geyser.text.GeyserLocale;
 import org.geysermc.geyser.text.MinecraftLocale;
+import org.geysermc.geyser.translator.TranslatorVersionRouter;
+import org.geysermc.geyser.translator.protocol.java.level.ChunkTranslationExecutor;
 import org.geysermc.geyser.translator.text.MessageTranslator;
 import org.geysermc.geyser.util.AssetUtils;
+import org.geysermc.geyser.util.TranslatorMetrics;
 import org.geysermc.geyser.util.CodeOfConductManager;
 import org.geysermc.geyser.util.InternalPlatformType;
 import org.geysermc.geyser.util.JsonUtils;
@@ -157,6 +161,19 @@ public class GeyserImpl implements GeyserApi, EventRegistrar {
     private static final Pattern IP_REGEX = Pattern.compile("\\b\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\b");
 
     private final SessionManager sessionManager = new SessionManager();
+
+    @Getter
+    private @Nullable TranslatedChunkCache translatedChunkCache;
+    @Getter
+    private @Nullable TranslatorMetrics translatorMetrics;
+    @Getter
+    private volatile boolean translatorAsyncChunksEnabled;
+    @Getter
+    private @Nullable String translatorNodeId;
+    @Getter
+    private @Nullable TranslatorVersionRouter translatorVersionRouter;
+    @Getter
+    private @Nullable String translatorSkinCdnBaseUrl;
 
     private FloodgateCipher cipher;
     private @Nullable FloodgateSkinUploader skinUploader;
@@ -969,5 +986,47 @@ public class GeyserImpl implements GeyserApi, EventRegistrar {
         } else {
             savedAuthChains = null;
         }
+    }
+
+    /**
+     * Configures translator-specific scaling features (chunk cache, async workers, metrics).
+     */
+    public void configureTranslator(
+        String nodeId,
+        int chunkCacheSize,
+        int chunkThreads,
+        boolean asyncChunks,
+        List<Integer> supportedBedrockProtocols,
+        String skinCdnBaseUrl
+    ) {
+        this.translatorNodeId = nodeId;
+        this.translatedChunkCache = new TranslatedChunkCache(chunkCacheSize);
+        this.translatorMetrics = new TranslatorMetrics();
+        this.translatorAsyncChunksEnabled = asyncChunks;
+        this.translatorVersionRouter = new TranslatorVersionRouter(supportedBedrockProtocols);
+        this.translatorSkinCdnBaseUrl = skinCdnBaseUrl == null || skinCdnBaseUrl.isBlank() ? null : skinCdnBaseUrl;
+        ChunkTranslationExecutor.init(chunkThreads);
+    }
+
+    /**
+     * @return true if this translator node accepts the given Bedrock protocol, or if not a translator node
+     */
+    public boolean acceptsTranslatorBedrockProtocol(int protocolVersion) {
+        if (translatorVersionRouter == null) {
+            return true;
+        }
+        return translatorVersionRouter.accepts(protocolVersion);
+    }
+
+    public String getTranslatorProtocolRejectMessage(int protocolVersion) {
+        String node = translatorNodeId != null ? translatorNodeId : "unknown";
+        List<Integer> advertised = translatorVersionRouter != null
+            ? translatorVersionRouter.advertisedProtocols()
+            : List.of();
+        String versions = advertised.isEmpty()
+            ? GameProtocol.getAllSupportedBedrockVersions()
+            : advertised.stream().map(String::valueOf).collect(java.util.stream.Collectors.joining(", "));
+        return "This translator node (" + node + ") does not support Bedrock protocol "
+            + protocolVersion + ". Connect to a node that supports: " + versions;
     }
 }

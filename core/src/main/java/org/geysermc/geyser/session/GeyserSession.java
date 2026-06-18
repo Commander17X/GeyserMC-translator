@@ -94,6 +94,7 @@ import org.cloudburstmc.protocol.bedrock.packet.LevelSoundEventPacket;
 import org.cloudburstmc.protocol.bedrock.packet.NetworkStackLatencyPacket;
 import org.cloudburstmc.protocol.bedrock.packet.PlayStatusPacket;
 import org.cloudburstmc.protocol.bedrock.packet.SetCommandsEnabledPacket;
+import org.cloudburstmc.protocol.bedrock.packet.SetEntityDataPacket;
 import org.cloudburstmc.protocol.bedrock.packet.SetEntityMotionPacket;
 import org.cloudburstmc.protocol.bedrock.packet.SetTimePacket;
 import org.cloudburstmc.protocol.bedrock.packet.StartGamePacket;
@@ -157,6 +158,7 @@ import org.geysermc.geyser.level.BedrockDimension;
 import org.geysermc.geyser.level.JavaDimension;
 import org.geysermc.geyser.level.gamerule.GameRuleHandler;
 import org.geysermc.geyser.level.physics.CollisionManager;
+import org.geysermc.geyser.movement.MovementNormalizer;
 import org.geysermc.geyser.network.GameProtocol;
 import org.geysermc.geyser.network.netty.LocalSession;
 import org.geysermc.geyser.registry.Registries;
@@ -168,6 +170,7 @@ import org.geysermc.geyser.session.cache.AdvancementsCache;
 import org.geysermc.geyser.session.cache.BlockBreakHandler;
 import org.geysermc.geyser.session.cache.BookEditCache;
 import org.geysermc.geyser.session.cache.BundleCache;
+import org.geysermc.geyser.session.cache.ChunkBatchTracker;
 import org.geysermc.geyser.session.cache.ChunkCache;
 import org.geysermc.geyser.session.cache.ComponentCache;
 import org.geysermc.geyser.session.cache.EntityCache;
@@ -242,6 +245,7 @@ import java.util.BitSet;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -294,12 +298,14 @@ public class GeyserSession implements GeyserConnection, GeyserCommandSource {
     private final BookEditCache bookEditCache;
     private final BundleCache bundleCache;
     private final ChunkCache chunkCache;
+    private final ChunkBatchTracker chunkBatchTracker;
     private final ComponentCache componentCache;
     private final EntityCache entityCache;
     private final EntityEffectCache effectCache;
     private final FormCache formCache;
     private final GameRuleHandler gameRuleHandler;
     private final InputCache inputCache;
+    private final MovementNormalizer movementNormalizer;
     private final LodestoneCache lodestoneCache;
     private final PistonCache pistonCache;
     private final PreferencesCache preferencesCache;
@@ -840,11 +846,13 @@ public class GeyserSession implements GeyserConnection, GeyserCommandSource {
         this.bookEditCache = new BookEditCache(this);
         this.bundleCache = new BundleCache(this);
         this.chunkCache = new ChunkCache(this);
+        this.chunkBatchTracker = new ChunkBatchTracker();
         this.componentCache = new ComponentCache(this);
         this.entityCache = new EntityCache(this);
         this.effectCache = new EntityEffectCache();
         this.formCache = new FormCache(this);
         this.inputCache = new InputCache(this);
+        this.movementNormalizer = new MovementNormalizer(this);
         this.lodestoneCache = new LodestoneCache();
         this.pistonCache = new PistonCache(this);
         this.preferencesCache = new PreferencesCache(this);
@@ -1321,6 +1329,54 @@ public class GeyserSession implements GeyserConnection, GeyserCommandSource {
     }
 
     /**
+     * @return session-local tick counter used for movement coalescing
+     */
+    public int sessionTick() {
+        return ticks;
+    }
+
+    /**
+     * Queues a Bedrock packet to be sent in a batch at the end of the current server tick.
+     */
+    public void queueImmediatelyUpstreamPacket(BedrockPacket packet) {
+        queuedImmediatelyPackets.add(packet);
+    }
+
+    private void flushQueuedImmediatelyPackets() {
+        if (queuedImmediatelyPackets.isEmpty()) {
+            return;
+        }
+
+        Map<Long, SetEntityDataPacket> coalescedMetadata = new LinkedHashMap<>();
+        List<BedrockPacket> otherPackets = new ArrayList<>();
+
+        for (BedrockPacket packet : queuedImmediatelyPackets) {
+            if (packet instanceof SetEntityDataPacket entityData) {
+                coalescedMetadata.merge(entityData.getRuntimeEntityId(), entityData, this::mergeEntityDataPackets);
+            } else {
+                otherPackets.add(packet);
+            }
+        }
+
+        queuedImmediatelyPackets.clear();
+
+        List<BedrockPacket> batched = new ArrayList<>(otherPackets.size() + coalescedMetadata.size());
+        batched.addAll(otherPackets);
+        batched.addAll(coalescedMetadata.values());
+
+        if (!batched.isEmpty()) {
+            this.upstream.getSession().getPeer().sendPacketsImmediately(0, 0, batched.toArray(new BedrockPacket[0]));
+        }
+    }
+
+    private SetEntityDataPacket mergeEntityDataPackets(SetEntityDataPacket existing, SetEntityDataPacket incoming) {
+        incoming.getMetadata().forEach((type, value) -> existing.getMetadata().put(type, value));
+        existing.getProperties().getIntProperties().addAll(incoming.getProperties().getIntProperties());
+        existing.getProperties().getFloatProperties().addAll(incoming.getProperties().getFloatProperties());
+        return existing;
+    }
+
+    /**
      * Called every Minecraft tick.
      */
     protected void tick() {
@@ -1394,8 +1450,8 @@ public class GeyserSession implements GeyserConnection, GeyserCommandSource {
             this.dialogManager.tick();
             this.waypointCache.tick();
 
-            this.upstream.getSession().getPeer().sendPacketsImmediately(0, 0, queuedImmediatelyPackets.toArray(new BedrockPacket[0]));
-            queuedImmediatelyPackets.clear();
+            this.movementNormalizer.flushPending();
+            this.flushQueuedImmediatelyPackets();
 
             CooldownUtils.tickCooldown(this);
         } catch (Throwable throwable) {

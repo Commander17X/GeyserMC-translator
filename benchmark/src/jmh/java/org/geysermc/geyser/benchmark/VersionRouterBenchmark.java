@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2024 GeyserMC. http://geysermc.org
+ * Copyright (c) 2024 GeyserMC. http://geysermc.org
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,20 +23,39 @@
  * @link https://github.com/GeyserMC/Geyser
  */
 
-package org.geysermc.geyser.translator.protocol.bedrock.entity.player.input;
+package org.geysermc.geyser.benchmark;
 
-import org.cloudburstmc.protocol.bedrock.packet.PlayerAuthInputPacket;
-import org.geysermc.geyser.session.GeyserSession;
+import org.geysermc.geyser.network.GameProtocol;
+import org.geysermc.geyser.translator.TranslatorVersionRouter;
+import org.openjdk.jmh.annotations.Benchmark;
+import org.openjdk.jmh.annotations.BenchmarkMode;
+import org.openjdk.jmh.annotations.Mode;
+import org.openjdk.jmh.annotations.Scope;
+import org.openjdk.jmh.annotations.Setup;
+import org.openjdk.jmh.annotations.State;
 
-/**
- * Holds processing input coming in from the {@link PlayerAuthInputPacket} packet.
- */
-final class BedrockMovePlayer {
+import java.util.List;
 
-    private BedrockMovePlayer() {
+@BenchmarkMode(Mode.AverageTime)
+@State(Scope.Benchmark)
+public class VersionRouterBenchmark {
+
+    private TranslatorVersionRouter restrictedRouter;
+    private int protocol;
+
+    @Setup
+    public void setup() {
+        restrictedRouter = new TranslatorVersionRouter(List.of(924, 944, 975));
+        protocol = GameProtocol.DEFAULT_BEDROCK_PROTOCOL;
     }
 
-    static void translate(GeyserSession session, PlayerAuthInputPacket packet) {
-        session.getMovementNormalizer().process(packet);
+    @Benchmark
+    public boolean acceptDefaultProtocol() {
+        return restrictedRouter.accepts(protocol);
+    }
+
+    @Benchmark
+    public boolean rejectUnknownProtocol() {
+        return restrictedRouter.accepts(1);
     }
 }

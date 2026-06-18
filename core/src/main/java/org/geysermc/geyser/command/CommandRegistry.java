@@ -173,7 +173,7 @@ public class CommandRegistry implements EventRegistrar {
         registerBuiltInCommand(new QuickActionsCommand("quickactions", "geyser.commands.quickactions.desc", "geyser.command.quickactions"));
         registerBuiltInCommand(new GameruleCommand("gamerules", "geyser.commands.gamerules.desc", "geyser.command.gamerules"));
 
-        if (this.geyser.platformType() == PlatformType.STANDALONE) {
+        if (this.geyser.platformType() == PlatformType.STANDALONE || this.geyser.platformType() == PlatformType.TRANSLATOR) {
             registerBuiltInCommand(new StopCommand(geyser, "stop", "geyser.commands.stop.desc", "geyser.command.stop"));
         }
 

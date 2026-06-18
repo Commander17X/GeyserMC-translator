@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2024 GeyserMC. http://geysermc.org
+ * Copyright (c) 2024 GeyserMC. http://geysermc.org
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,20 +23,28 @@
  * @link https://github.com/GeyserMC/Geyser
  */
 
-package org.geysermc.geyser.translator.protocol.bedrock.entity.player.input;
+package org.geysermc.geyser.movement;
 
-import org.cloudburstmc.protocol.bedrock.packet.PlayerAuthInputPacket;
+import org.cloudburstmc.math.vector.Vector3f;
+import org.geysermc.geyser.entity.EntityDefinitions;
 import org.geysermc.geyser.session.GeyserSession;
 
 /**
- * Holds processing input coming in from the {@link PlayerAuthInputPacket} packet.
+ * Blocks movement processing until {@link org.geysermc.geyser.session.cache.TeleportCache} confirms.
  */
-final class BedrockMovePlayer {
+public final class TeleportGate {
 
-    private BedrockMovePlayer() {
+    private TeleportGate() {
     }
 
-    static void translate(GeyserSession session, PlayerAuthInputPacket packet) {
-        session.getMovementNormalizer().process(packet);
+    /**
+     * @return true if movement should be blocked for this packet (teleport still pending)
+     */
+    public static boolean blocksMovement(GeyserSession session, Vector3f bedrockPosition) {
+        if (session.getUnconfirmedTeleport() == null) {
+            return false;
+        }
+        session.confirmTeleport(bedrockPosition.down(EntityDefinitions.PLAYER.offset()));
+        return true;
     }
 }

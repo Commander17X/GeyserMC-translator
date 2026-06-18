@@ -42,6 +42,15 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public final class SessionManager {
     /**
+     * When true, new Bedrock connections are rejected while existing sessions continue.
+     */
+    private volatile boolean draining;
+
+    /**
+     * Maps Java player UUIDs to the translator node and Bedrock protocol that last served them.
+     */
+    private final Map<UUID, SessionAffinity> sessionAffinity = new ConcurrentHashMap<>();
+    /**
      * A list of all players who don't currently have a permanent UUID attached yet.
      */
     @Getter(AccessLevel.PACKAGE)
@@ -67,8 +76,44 @@ public final class SessionManager {
         sessions.put(uuid, session);
     }
 
+    public void setSessionAffinity(UUID uuid, String nodeId, int bedrockProtocol) {
+        if (uuid != null && nodeId != null && !nodeId.isBlank() && bedrockProtocol > 0) {
+            sessionAffinity.put(uuid, new SessionAffinity(nodeId, bedrockProtocol));
+        }
+    }
+
+    public void setSessionAffinity(UUID uuid, String nodeId) {
+        setSessionAffinity(uuid, nodeId, -1);
+    }
+
+    public @Nullable SessionAffinity getSessionAffinity(UUID uuid) {
+        return uuid == null ? null : sessionAffinity.get(uuid);
+    }
+
+    public @Nullable String getSessionAffinityNodeId(UUID uuid) {
+        SessionAffinity affinity = getSessionAffinity(uuid);
+        return affinity == null ? null : affinity.nodeId();
+    }
+
+    public void removeSessionAffinity(UUID uuid) {
+        if (uuid != null) {
+            sessionAffinity.remove(uuid);
+        }
+    }
+
+    public boolean isDraining() {
+        return draining;
+    }
+
+    public void setDraining(boolean draining) {
+        this.draining = draining;
+    }
+
     public void removeSession(GeyserSession session) {
         UUID uuid = session.getPlayerEntity().uuid();
+        if (uuid != null) {
+            sessionAffinity.remove(uuid);
+        }
         if (uuid == null || sessions.remove(uuid) == null) {
             // Connection was likely pending
             pendingSessions.remove(session);

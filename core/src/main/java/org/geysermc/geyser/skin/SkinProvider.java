@@ -444,6 +444,9 @@ public class SkinProvider {
 
         // If no image we download it
         if (image == null) {
+            image = trySkinCdn(imageUrl);
+        }
+        if (image == null) {
             image = downloadImage(imageUrl);
             GeyserImpl.getInstance().getLogger().debug("Downloaded " + imageUrl);
 
@@ -614,6 +617,22 @@ public class SkinProvider {
                 }
                 return requestTexturesFromUUID(uuid);
             });
+    }
+
+    private static @Nullable BufferedImage trySkinCdn(String imageUrl) {
+        String baseUrl = GeyserImpl.getInstance().getTranslatorSkinCdnBaseUrl();
+        if (baseUrl == null || baseUrl.isBlank()) {
+            return null;
+        }
+        String normalized = baseUrl.endsWith("/") ? baseUrl : baseUrl + "/";
+        String cdnUrl = normalized + UUID.nameUUIDFromBytes(imageUrl.getBytes()) + ".png";
+        try {
+            BufferedImage image = downloadImage(cdnUrl);
+            GeyserImpl.getInstance().getLogger().debug("Loaded skin from CDN " + cdnUrl + " for " + imageUrl);
+            return image;
+        } catch (IOException ignored) {
+            return null;
+        }
     }
 
     private static BufferedImage downloadImage(String imageUrl) throws IOException {
