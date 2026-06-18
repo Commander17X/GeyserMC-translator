@@ -31,7 +31,16 @@ CORRECT SETUP
 
      java -jar Geyser-Translator.jar --nogui
 
-   Or on Windows: double-click run.bat (after editing config.yml)
+   Or on Windows: run.bat (after editing config.yml)
+
+BUILD FROM SOURCE
+-----------------
+Before building, fetch Geyser language/mapping data:
+
+     git submodule update --init --recursive
+
+Or clone manually into core/src/main/resources/languages and mappings.
+Then: gradlew :translator:shadowJar
 
 5. Point Bedrock clients at the translator's bedrock.port (default 19132).
 

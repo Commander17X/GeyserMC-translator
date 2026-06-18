@@ -38,6 +38,7 @@ import org.geysermc.geyser.command.CommandRegistry;
 import org.geysermc.geyser.command.standalone.StandaloneCloudCommandManager;
 import org.geysermc.geyser.configuration.ConfigLoader;
 import org.geysermc.geyser.configuration.GeyserConfig;
+import org.geysermc.geyser.configuration.GeyserRemoteConfig;
 import org.geysermc.geyser.dump.BootstrapDumpInfo;
 import org.geysermc.geyser.ping.GeyserLegacyPingPassthrough;
 import org.geysermc.geyser.ping.IGeyserPingPassthrough;
@@ -71,7 +72,8 @@ public class GeyserTranslatorBootstrap implements GeyserBootstrap {
 
     private StandaloneCloudCommandManager cloud;
     private CommandRegistry commandRegistry;
-    private GeyserTranslatorConfig geyserConfig;
+    private GeyserRemoteConfig geyserConfig;
+    private TranslatorOpsConfig translatorOps;
     // Renamed logger to reflect Translator context
     private final GeyserTranslatorLogger geyserLogger = new GeyserTranslatorLogger(); 
     private IGeyserPingPassthrough geyserPingPassthrough;
@@ -164,7 +166,7 @@ public class GeyserTranslatorBootstrap implements GeyserBootstrap {
 
     @Override
     public void onGeyserEnable() {
-        this.geyserConfig = loadConfig(GeyserTranslatorConfig.class);
+        this.geyserConfig = loadConfig(GeyserRemoteConfig.class);
         if (this.geyserConfig == null) {
             if (gui == null) {
                 System.exit(1);
@@ -174,21 +176,30 @@ public class GeyserTranslatorBootstrap implements GeyserBootstrap {
             }
         }
 
+        this.translatorOps = TranslatorConfigLoader.load(new File(configFilename));
+        if (this.translatorOps == null) {
+            geyserLogger.error("Failed to load translator section from config.yml");
+            if (gui == null) {
+                System.exit(1);
+            } else {
+                return;
+            }
+        }
+
         // Allow libraries like Protocol to have their debug information passthrough
         log4jLogger.get().setLevel(geyserConfig.debugMode() ? Level.DEBUG : Level.INFO);
 
-        GeyserTranslatorConfig.TranslatorOpsConfig ops = geyserConfig.translator();
-        applyRakNetOverrides(ops);
+        applyRakNetOverrides(translatorOps);
 
         geyser = GeyserImpl.load(this);
 
         geyser.configureTranslator(
-            ops.nodeId(),
-            ops.chunkCacheSize(),
-            ops.chunkTranslationThreads(),
-            ops.asyncChunkTranslation(),
-            ops.supportedBedrockProtocols(),
-            ops.skinCdnBaseUrl()
+            translatorOps.nodeId(),
+            translatorOps.chunkCacheSize(),
+            translatorOps.chunkTranslationThreads(),
+            translatorOps.asyncChunkTranslation(),
+            translatorOps.supportedBedrockProtocols(),
+            translatorOps.skinCdnBaseUrl()
         );
 
         boolean reloading = geyser.isReloading();
@@ -217,7 +228,7 @@ public class GeyserTranslatorBootstrap implements GeyserBootstrap {
 
         geyserPingPassthrough = GeyserLegacyPingPassthrough.init(geyser);
 
-        startHealthServer(ops.healthPort());
+        startHealthServer(translatorOps.healthPort());
 
         geyserLogger.start();
     }
@@ -233,7 +244,7 @@ public class GeyserTranslatorBootstrap implements GeyserBootstrap {
     /**
      * Applies translator RakNet/DDoS tuning via system properties read by {@link org.geysermc.geyser.network.netty.GeyserServer}.
      */
-    private static void applyRakNetOverrides(GeyserTranslatorConfig.TranslatorOpsConfig ops) {
+    private static void applyRakNetOverrides(TranslatorOpsConfig ops) {
         System.setProperty("Geyser.RakSendCookie", Boolean.toString(ops.rakSendCookie()));
         if (ops.rakPacketLimit() >= 0) {
             System.setProperty("Geyser.RakPacketLimit", Integer.toString(ops.rakPacketLimit()));

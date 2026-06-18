@@ -23,28 +23,33 @@
  * @link https://github.com/GeyserMC/Geyser
  */
 
-package org.geysermc.geyser.util.metrics;
+package org.geysermc.geyser.platform.translator;
 
-import org.geysermc.geyser.GeyserImpl;
-import org.geysermc.geyser.api.util.PlatformType;
+import org.checkerframework.checker.nullness.qual.Nullable;
+import org.spongepowered.configurate.CommentedConfigurationNode;
+import org.spongepowered.configurate.ConfigurateException;
+import org.spongepowered.configurate.yaml.NodeStyle;
+import org.spongepowered.configurate.yaml.YamlConfigurationLoader;
 
-public interface MetricsPlatform {
-    boolean enabled();
+import java.io.File;
 
-    String serverUuid();
+final class TranslatorConfigLoader {
 
-    boolean logFailedRequests();
+    private TranslatorConfigLoader() {
+    }
 
-    boolean logSentData();
+    static @Nullable TranslatorOpsConfig load(File configFile) {
+        try {
+            YamlConfigurationLoader loader = YamlConfigurationLoader.builder()
+                .file(configFile)
+                .indent(2)
+                .nodeStyle(NodeStyle.BLOCK)
+                .build();
 
-    boolean logResponseStatusText();
-
-    // We're not relocating on Geyser-Standalone, and using JiJ on modded platforms
-    default boolean disableRelocateCheck() {
-        PlatformType platformType = GeyserImpl.getInstance().platformType();
-        return platformType == PlatformType.FABRIC ||
-            platformType == PlatformType.NEOFORGE ||
-            platformType == PlatformType.STANDALONE ||
-            platformType == PlatformType.TRANSLATOR;
+            CommentedConfigurationNode root = loader.load();
+            return root.node("translator").get(TranslatorOpsConfig.class);
+        } catch (ConfigurateException e) {
+            return null;
+        }
     }
 }

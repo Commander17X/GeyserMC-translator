@@ -14,6 +14,8 @@ java {
 dependencies {
     api(projects.core)
 
+    implementation(libs.configurate.yaml)
+
     implementation(libs.terminalconsoleappender) {
         exclude("org.apache.logging.log4j")
         exclude("org.jline")

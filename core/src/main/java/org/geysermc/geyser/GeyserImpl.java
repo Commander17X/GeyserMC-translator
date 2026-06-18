@@ -306,7 +306,7 @@ public class GeyserImpl implements GeyserApi, EventRegistrar {
         message += " " + GeyserLocale.getLocaleStringLog("geyser.core.finish.console");
         logger.info(message);
 
-        if (platformType() == PlatformType.STANDALONE) {
+        if (platformType() == PlatformType.STANDALONE || platformType() == PlatformType.TRANSLATOR) {
             if (config.java().authType() != AuthType.FLOODGATE) {
                 // If the auth-type is Floodgate, then this Geyser instance is probably owned by the Java server
                 logger.warning(GeyserLocale.getLocaleStringLog("geyser.core.movement_warn"));
@@ -373,7 +373,7 @@ public class GeyserImpl implements GeyserApi, EventRegistrar {
         boolean portPropertyApplied = false;
         String pluginUdpAddress = System.getProperty("geyserUdpAddress", System.getProperty("pluginUdpAddress", ""));
 
-        if (platformType() != PlatformType.STANDALONE) {
+        if (platformType() != PlatformType.STANDALONE && platformType() != PlatformType.TRANSLATOR) {
             int javaPort = bootstrap.getServerPort();
             String serverAddress = bootstrap.getServerBindAddress();
             if (!serverAddress.isEmpty() && !"0.0.0.0".equals(serverAddress)) {
